@@ -18,7 +18,7 @@ For everything else (building, platforms, the engine API), the upstream [README]
 ## Proposing an engine (status `no`)
 
 ```sh
-make devtools/create_engine/create_engine   # or build it with your compiler
+c++ -o devtools/create_engine/create_engine devtools/create_engine/create_engine.cpp
 devtools/create_engine/create_engine mygame # generates engines/mygame/ with status "no"
 cp .github/ai/PROVENANCE.md engines/mygame/   # then fill it in
 .github/ai/check.sh list > ENGINES-AI.md     # add the engine to the engine list
