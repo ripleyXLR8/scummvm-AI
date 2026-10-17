@@ -94,6 +94,10 @@ jobs:
           mkdir build-scummvm
           cd build-scummvm
           ../devtools/create_project/cmake/Debug/create_project.exe .. --msvc --vcpkg ${{ env.CONFIG_FLAGS }}
+      # With every default engine, Release LTCG overflows the 4 GB image limit (x86/x64) and crashes
+      # the arm64 compiler (C1001). Turn it off in the generated property sheets.
+      - shell: bash
+        run: sed -i 's#<WholeProgramOptimization>true#<WholeProgramOptimization>false#; s#<LinkTimeCodeGeneration>true#<LinkTimeCodeGeneration>false#; s#UseLinkTimeCodeGeneration#Default#' build-scummvm/*.props
       - uses: microsoft/setup-msbuild@v2
       - run: vcpkg install
       - run: |
