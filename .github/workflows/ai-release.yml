@@ -72,9 +72,13 @@ jobs:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg_installed
       VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/.github/vcpkg-ports
       GIT_VCPKG_COMMIT: 9e593bb18ea69cc5095e012465dcd675a822ed0d
+    defaults:
+      run:
+        shell: pwsh # as in ci.yml: bash would mangle the Windows paths vcpkg hands back
     steps:
       - uses: actions/checkout@v5
       - run: .github/ai/check.sh version "$TAG"
+        shell: bash
       - uses: ilammy/setup-nasm@v1
         if: matrix.useNasm == 'true'
       - uses: lukka/run-vcpkg@v11
@@ -83,17 +87,22 @@ jobs:
           vcpkgGitCommitId: ${{ env.GIT_VCPKG_COMMIT }}
       - run: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}/vcpkg integrate install
       - run: |
-          cd devtools/create_project/cmake && cmake . && cmake --build . -j 2 && cd ../../..
-          mkdir build-scummvm && cd build-scummvm
-          ../devtools/create_project/cmake/Debug/create_project.exe .. --msvc --vcpkg $CONFIG_FLAGS
+          cd devtools/create_project/cmake
+          cmake .
+          cmake --build . -j 2
+          cd ../../../
+          mkdir build-scummvm
+          cd build-scummvm
+          ../devtools/create_project/cmake/Debug/create_project.exe .. --msvc --vcpkg ${{ env.CONFIG_FLAGS }}
       - uses: microsoft/setup-msbuild@v2
       - run: vcpkg install
       - run: |
           cd build-scummvm
           msbuild scummvm.sln /m /p:VcpkgEnableManifest=true /p:BuildInParallel=true /p:Configuration=Release /p:PreferredToolArchitecture=x64 /p:Platform=${{ matrix.platform }} /v:minimal
-      - run: |
+      - shell: bash
+        run: |
           mkdir -p "pkg/ScummVM-AI" dist
-          cp build-scummvm/Release${{ matrix.arch }}/*.exe "$VCPKG_INSTALLED_DIR/${{ matrix.triplet }}/bin/"*.dll COPYING pkg/ScummVM-AI/
+          cp build-scummvm/Release${{ matrix.arch }}/*.exe "$(cygpath -u "$VCPKG_INSTALLED_DIR")/${{ matrix.triplet }}/bin/"*.dll COPYING pkg/ScummVM-AI/
           (cd pkg && 7z a -bd "../dist/ScummVM-AI-$TAG-windows-${{ matrix.arch }}.zip" ScummVM-AI)
       - uses: actions/upload-artifact@v5
         with:
