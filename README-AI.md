@@ -55,6 +55,24 @@ The **activation** job runs on any PR that touches an engine whose status is `ye
 
 The **AI engine approvals** workflow also requires approvals on the PR's latest commit from people with write access. The default is 2; change it with the repository variable `AI_REQUIRED_APPROVALS`.
 
+## Releases
+
+A maintainer starts a release by pushing a tag: `git tag ai-YYYYMMDD && git push origin ai-YYYYMMDD`. The **AI release** workflow then builds every platform that upstream's CI covers and publishes a GitHub pre-release with the binaries:
+
+- Windows x86, x64 and arm64
+- Linux (AppImage)
+- macOS x86_64
+- iOS (an unsigned `.ipa`)
+- Web (Emscripten)
+
+How a release differs from a CI build:
+
+- **Only engines that are built by default are included**: upstream's stable engines and the *Active* AI engines. *Proposed* engines are never shipped. (Upstream's `ci.yml` builds with `--enable-all-engines`, so it does include them.)
+- **The version carries the tag**, for example `2026.4.1git-ai-20261017`, so a ScummVM-AI binary can't pass for an official ScummVM build.
+- **The builds aren't notarized or signed by an identity.** The macOS app is only ad-hoc signed, and you have to sign the iOS `.ipa` yourself to sideload it.
+
+The build steps are copied from upstream's `ci.yml`. When an upstream sync changes that file, compare it with `ai-release.yml`.
+
 ## Staying in sync with upstream
 
 The **Upstream sync** workflow runs every day and can also be started by hand from the Actions tab. It merges `scummvm/scummvm` `master` into the `upstream-sync` branch and opens a PR to `master`. That PR rebuilds every AI engine against the new upstream. If one breaks, upstream has changed an API that engine uses: ping the engine's responsible human. Always merge that PR with **Create a merge commit**, never squash or rebase.

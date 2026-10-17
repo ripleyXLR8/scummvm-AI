@@ -8,7 +8,7 @@
 [![License: GPL v3+](https://img.shields.io/badge/license-GPLv3%2B-blue.svg)](../COPYING)
 [![Based on ScummVM](https://img.shields.io/badge/based%20on-ScummVM-6b8e23.svg)](https://github.com/scummvm/scummvm)
 
-**[Engines](../ENGINES-AI.md)** · **[Contribute](../README-AI.md)** · **[For coding agents](../CLAUDE.md)** · **[Build ScummVM](../README.md)**
+**[Engines](../ENGINES-AI.md)** · **[Download](https://github.com/ripleyXLR8/scummvm-AI/releases)** · **[Contribute](../README-AI.md)** · **[For coding agents](../CLAUDE.md)** · **[Build ScummVM](../README.md)**
 
 </div>
 

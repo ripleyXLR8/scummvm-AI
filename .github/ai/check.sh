@@ -8,6 +8,7 @@
 #   check.sh playback <engine> <dir>  replay test/playthrough.r against game data in <dir>,
 #                                     writes engines/<engine>/test/playback.log
 #   check.sh list                     print ENGINES-AI.md (run: check.sh list > ENGINES-AI.md)
+#   check.sh version <ai-tag>         append the release tag to SCUMMVM_VERSION (release builds only)
 #
 # lint/lint-all write "engines=" and "activate=" to $GITHUB_OUTPUT when set.
 set -uo pipefail
@@ -190,8 +191,12 @@ lint) lint "$2" ;;
 lint-all) lint_all ;;
 build) shift; build "$@" ;;
 activate) activate "$2" ;;
+version)
+	[[ ${2:-} =~ ^ai-[0-9A-Za-z.]+$ ]] || { echo "::error::release tags look like ai-YYYYMMDD, got '${2:-}'"; exit 1; }
+	perl -pi -e 's/^(#define SCUMMVM_VERSION ")(.*)"/$1$2-'"$2"'"/' base/internal_version.h
+	grep '^#define SCUMMVM_VERSION ' base/internal_version.h ;;
 playback) run_playback "$2" "$3" "engines/$2/test/playback.log"; check_log "$2" "engines/$2/test/playback.log" ;;
 list) engines_md ;;
-*) sed -n '2,12p' "$0"; exit 2 ;;
+*) sed -n '2,13p' "$0"; exit 2 ;;
 esac
 exit $FAILED

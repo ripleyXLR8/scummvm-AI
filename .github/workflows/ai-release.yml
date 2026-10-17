@@ -1,0 +1,178 @@
+name: AI release
+# Builds ScummVM-AI for every platform upstream's ci.yml covers and publishes a GitHub pre-release.
+# Release: git tag ai-YYYYMMDD && git push origin ai-YYYYMMDD
+# Only engines enabled by default are built (upstream stable engines plus Active AI engines),
+# unlike ci.yml's --enable-all-engines. The version is suffixed with the tag so builds can't pass
+# for official ScummVM ones. Build steps are copied from ci.yml: compare them when upstream changes it.
+on:
+  push:
+    tags: ['ai-*']
+permissions:
+  contents: read
+env:
+  TAG: ${{ github.ref_name }}
+defaults:
+  run:
+    shell: bash
+jobs:
+  linux:
+    name: Linux (AppImage)
+    runs-on: ubuntu-22.04 # oldest glibc available, so the AppImage runs on more distros
+    steps:
+      - uses: actions/checkout@v5
+      - run: .github/ai/check.sh version "$TAG"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y liba52-dev libcurl4-openssl-dev libfaad-dev libflac-dev libfluidsynth-dev libfreetype6-dev libfribidi-dev libgif-dev libjpeg-turbo8-dev libmad0-dev libmikmod-dev libmpeg2-4-dev libogg-dev libpng-dev libsdl2-dev libsdl2-net-dev libtheora-dev libvorbis-dev libvpx-dev zlib1g-dev
+      - run: ./configure --enable-release --prefix=/usr && make -j4
+      - run: |
+          curl -fsSL -o linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy
+          APPIMAGE_EXTRACT_AND_RUN=1 LINUXDEPLOY=$PWD/linuxdeploy make appimage
+          mkdir dist && mv ScummVM*.AppImage "dist/ScummVM-AI-$TAG-linux-x86_64.AppImage"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: linux
+          path: dist/
+
+  emscripten:
+    name: Web (Emscripten)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: .github/ai/check.sh version "$TAG"
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: release-emscripten
+          max-size: 1G
+          create-symlink: true
+      - run: |
+          CXX='ccache emcc' dists/emscripten/build.sh configure --enable-release --enable-gif --enable-jpeg --enable-ogg --enable-png --enable-vorbis --enable-zlib --enable-freetype2
+          dists/emscripten/build.sh make
+          dists/emscripten/build.sh dist
+          mkdir dist && (cd build-emscripten && zip -qr "../dist/ScummVM-AI-$TAG-web.zip" .)
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web
+          path: dist/
+
+  windows:
+    name: Windows (${{ matrix.arch }})
+    runs-on: windows-2025-vs2026
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: win32, arch: x86, triplet: x86-windows, useNasm: 'true' }
+          - { platform: x64, arch: x64, triplet: x64-windows }
+          - { platform: arm64, arch: arm64, triplet: arm64-windows }
+    env:
+      CONFIG_FLAGS: --enable-discord --enable-faad --enable-gif --enable-mikmod --enable-mpeg2 --enable-vpx
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+      VCPKG_INSTALLED_DIR: ${{ github.workspace }}/vcpkg_installed
+      VCPKG_OVERLAY_PORTS: ${{ github.workspace }}/.github/vcpkg-ports
+      GIT_VCPKG_COMMIT: 9e593bb18ea69cc5095e012465dcd675a822ed0d
+    steps:
+      - uses: actions/checkout@v5
+      - run: .github/ai/check.sh version "$TAG"
+      - uses: ilammy/setup-nasm@v1
+        if: matrix.useNasm == 'true'
+      - uses: lukka/run-vcpkg@v11
+        id: runvcpkg
+        with:
+          vcpkgGitCommitId: ${{ env.GIT_VCPKG_COMMIT }}
+      - run: ${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}/vcpkg integrate install
+      - run: |
+          cd devtools/create_project/cmake && cmake . && cmake --build . -j 2 && cd ../../..
+          mkdir build-scummvm && cd build-scummvm
+          ../devtools/create_project/cmake/Debug/create_project.exe .. --msvc --vcpkg $CONFIG_FLAGS
+      - uses: microsoft/setup-msbuild@v2
+      - run: vcpkg install
+      - run: |
+          cd build-scummvm
+          msbuild scummvm.sln /m /p:VcpkgEnableManifest=true /p:BuildInParallel=true /p:Configuration=Release /p:PreferredToolArchitecture=x64 /p:Platform=${{ matrix.platform }} /v:minimal
+      - run: |
+          mkdir -p "pkg/ScummVM-AI" dist
+          cp build-scummvm/Release${{ matrix.arch }}/*.exe "$VCPKG_INSTALLED_DIR/${{ matrix.triplet }}/bin/"*.dll COPYING pkg/ScummVM-AI/
+          (cd pkg && 7z a -bd "../dist/ScummVM-AI-$TAG-windows-${{ matrix.arch }}.zip" ScummVM-AI)
+      - uses: actions/upload-artifact@v5
+        with:
+          name: windows-${{ matrix.arch }}
+          path: dist/
+
+  apple:
+    name: ${{ matrix.name }}
+    runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (x86_64)
+            platform: macosx
+            buildFlags: -scheme ScummVM-macOS -destination 'platform=macOS,arch=x86_64'
+            configFlags: --enable-faad --enable-gif --enable-mikmod --enable-mpeg2 --enable-vpx
+            brewPackages: a52dec faad2 flac fluid-synth freetype fribidi giflib jpeg mad libmikmod libmpeg2 libogg libpng libvorbis libvpx sdl2 sdl2_net theora dylibbundler
+          - name: iOS (unsigned)
+            platform: ios7
+            buildFlags: -scheme ScummVM-iOS CODE_SIGN_IDENTITY="" CODE_SIGNING_ALLOWED=NO
+            configFlags: --ios --use-xcframework --enable-faad --enable-gif --enable-mikmod --enable-vpx --enable-mpc --enable-a52 --disable-taskbar --disable-tts
+            packagesUrl: https://downloads.scummvm.org/frs/build/scummvm-ios7-libs-v4.zip
+    steps:
+      - uses: actions/checkout@v5
+      - run: .github/ai/check.sh version "$TAG"
+      - if: matrix.brewPackages
+        run: brew install ${{ matrix.brewPackages }}
+      - if: matrix.packagesUrl
+        run: curl -fsSL -o libs.zip ${{ matrix.packagesUrl }} && unzip -q libs.zip
+      - run: |
+          (cd devtools/create_project/xcode && xcodebuild)
+          ./devtools/create_project/xcode/build/Release/create_project . --xcode ${{ matrix.configFlags }}
+      - run: |
+          xcodebuild CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ build -project scummvm.xcodeproj -configuration Release -derivedDataPath dd ${{ matrix.buildFlags }} | awk '$1 !~ /^(export|cd|clang++)/'
+      - run: |
+          app=$(find dd/Build/Products -maxdepth 2 -name '*.app' -path '*Release*' | head -1)
+          echo "Built $app"
+          mkdir dist
+          if [ "${{ matrix.platform }}" = macosx ]; then
+            # Copy Homebrew's dylibs into the bundle so it runs without Homebrew, then ad-hoc sign it.
+            dylibbundler -od -b -x "$app/Contents/MacOS/"* -d "$app/Contents/libs" -p @executable_path/../libs/
+            codesign --force --deep -s - "$app"
+            ditto -c -k --keepParent "$app" "dist/ScummVM-AI-$TAG-macos-x86_64.zip"
+          else
+            mkdir Payload && cp -R "$app" Payload/
+            zip -qr "dist/ScummVM-AI-$TAG-ios-unsigned.ipa" Payload
+          fi
+      - uses: actions/upload-artifact@v5
+        with:
+          name: apple-${{ matrix.platform }}
+          path: dist/
+
+  release:
+    needs: [linux, emscripten, windows, apple]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          active=$(grep '| Active |' ENGINES-AI.md | cut -d'|' -f2,3 | sed 's/^ */- /; s/ *| */: /; s/ *$//')
+          {
+            echo "Unofficial ScummVM-AI build of \`${GITHUB_SHA::10}\`, based on ScummVM $(sed -n 's/^#define SCUMMVM_VERSION "\(.*\)"/\1/p' base/internal_version.h). Not affiliated with the ScummVM team."
+            echo
+            echo "### Active AI engines"
+            echo "${active:-None yet. Proposed engines are not included in releases.}"
+            echo
+            echo "### Downloads"
+            echo "- **Windows**: unzip and run \`scummvm.exe\` (x64, x86 or arm64)."
+            echo "- **Linux**: \`chmod +x\` the AppImage and run it."
+            echo "- **macOS** (Intel, runs on Apple Silicon through Rosetta): not notarized. Right-click the app and choose *Open* the first time."
+            echo "- **iOS**: unsigned \`.ipa\`. Sign it yourself to sideload it (for example with AltStore or Sideloadly)."
+            echo "- **Web**: static files. Host them, then open \`scummvm.html\`."
+          } >notes.md
+          gh release create "$TAG" dist/* --prerelease --title "ScummVM-AI $TAG" --notes-file notes.md
