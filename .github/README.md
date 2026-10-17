@@ -28,6 +28,7 @@ This fork only adds files and never edits upstream ones. Every day, a workflow m
 
 ## Get started
 
+- **Engines in this fork:** see [ENGINES-AI.md](../ENGINES-AI.md) for each engine's game, kind, status and responsible human.
 - **Contributors:** read [README-AI.md](../README-AI.md) for the rules and the step-by-step process.
 - **Coding agents:** read [CLAUDE.md](../CLAUDE.md).
 - **Building and running ScummVM:** see the upstream [README](../README.md).

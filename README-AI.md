@@ -20,7 +20,8 @@ For everything else (building, platforms, the engine API), the upstream [README]
 ```sh
 make devtools/create_engine/create_engine   # or build it with your compiler
 devtools/create_engine/create_engine mygame # generates engines/mygame/ with status "no"
-cp .github/ai/PROVENANCE.md engines/mygame/
+cp .github/ai/PROVENANCE.md engines/mygame/   # then fill it in
+.github/ai/check.sh list > ENGINES-AI.md     # add the engine to the engine list
 ./configure --disable-all-engines --enable-engine=mygame && make -j
 ```
 
@@ -28,6 +29,7 @@ Open a PR using the AI engine template: add `?template=ai-engine.md` to the PR U
 
 - The PR touches only allowed paths.
 - `PROVENANCE.md` is complete.
+- [ENGINES-AI.md](ENGINES-AI.md), the list of all engines, is up to date.
 - The engine's status in `configure.engine` is `no` or `yes`.
 - The engine builds on its own and registers with ScummVM (`scummvm --list-engines`).
 
@@ -35,7 +37,7 @@ Once merged with status `no`, the engine is **proposed**. Default builds leave i
 
 ## Activating an engine (status `yes`)
 
-Open a PR that sets `yes` in `engines/<name>/configure.engine`. In the same PR, add:
+Open a PR that sets `yes` in `engines/<name>/configure.engine` and regenerates the engine list (`.github/ai/check.sh list > ENGINES-AI.md`). In the same PR, add:
 
 - `engines/<name>/REVIEW.md`, from [the template](.github/ai/REVIEW.md), with all sections filled and all boxes checked.
 - `engines/<name>/test/playthrough.r`: a recording made with ScummVM's event recorder. Configure with `--enable-eventrecorder`, then run `scummvm --record-mode=record --record-file-name=playthrough.r <target>`. The file is written to your save directory.
