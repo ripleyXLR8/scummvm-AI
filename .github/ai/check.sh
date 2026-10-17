@@ -18,7 +18,7 @@ export ASAN_OPTIONS=${ASAN_OPTIONS:-detect_leaks=0}
 fail() { echo "::error::$*"; FAILED=1; }
 
 # Files the fork itself owns. Anything else outside engines/<name>/ is an upstream file.
-FORK_FILES='^(CLAUDE\.md|AGENTS\.md|README-AI\.md|\.github/ai/.*|\.github/workflows/ai-.*\.yml|\.github/workflows/upstream-sync\.yml|\.github/PULL_REQUEST_TEMPLATE/ai-engine\.md)$'
+FORK_FILES='^(CLAUDE\.md|README-AI\.md|\.github/README\.md|\.github/ai/.*|\.github/workflows/ai-.*\.yml|\.github/workflows/upstream-sync\.yml|\.github/PULL_REQUEST_TEMPLATE/ai-engine\.md)$'
 
 # Status (build-by-default field) of an engine's configure.engine, from the worktree or a git ref.
 status() {
