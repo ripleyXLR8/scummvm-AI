@@ -26,5 +26,11 @@
 <!-- Reimplementation: which files are detected and where users can legally get them.
      Original: the data's license and its download URL. -->
 
+## Assets
+<!-- Every asset committed or shipped with the game (graphics, music, sound, voices, text, fonts) and
+     how it was made: by a human, by AI (name the tool and model), or third-party (give its license).
+     AI-generated assets are allowed in this fork as long as they are declared here.
+     Reimplementation: write "none, uses the original game data". -->
+
 ## License
 <!-- Engine code is GPLv3 or later, like ScummVM. Say so here. -->

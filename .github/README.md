@@ -79,7 +79,7 @@ Then follow **[README-AI.md](../README-AI.md)** to open your pull request. Using
 Not as AI-authored code: upstream's guidelines forbid it. Anyone who wants to send an engine upstream has to follow [AI-GUIDELINES.md](../AI-GUIDELINES.md) themselves.
 
 **Can I use AI-generated art in an original game?**
-Upstream bans AI-generated art, and this fork has no rule on it yet. Describe whatever you use in your engine's `PROVENANCE.md`.
+Yes, as long as you declare it. Upstream bans AI-generated art, but this fork exists to explore what AI can do. List every asset, and say how it was made, under `## Assets` in your engine's `PROVENANCE.md`.
 
 **How do I credit the AI I used?**
 Add an `Assisted-by: AGENT:MODEL` trailer to your commits, and list the tools in `PROVENANCE.md`. Don't use `Co-Authored-By`: an inherited upstream workflow closes PRs that have one.

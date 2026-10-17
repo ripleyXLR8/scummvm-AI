@@ -13,6 +13,7 @@
 ## Checklist
 - [ ] I read all of the engine code.
 - [ ] I checked the claims in PROVENANCE.md (clean room, no copyrighted code or assets committed).
+- [ ] Every asset in the game is listed under "Assets" in PROVENANCE.md, AI-generated ones included.
 - [ ] The engine only uses ScummVM APIs for files, saves, graphics, sound, input and timing: no direct OS, network or filesystem calls.
 - [ ] Saving and loading work, including loading from the launcher.
 - [ ] The recording in test/playthrough.r covers the playtest described above.
