@@ -65,7 +65,7 @@ jobs:
         include:
           - { platform: win32, arch: x86, triplet: x86-windows, useNasm: 'true' }
           - { platform: x64, arch: x64, triplet: x64-windows }
-          - { platform: arm64, arch: arm64, triplet: arm64-windows, msbuildJobs: 2 } # the arm64 compiler runs out of memory on mads with more
+          - { platform: arm64, arch: arm64, triplet: arm64-windows }
     env:
       CONFIG_FLAGS: --enable-discord --enable-faad --enable-gif --enable-mikmod --enable-mpeg2 --enable-vpx
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
@@ -99,11 +99,17 @@ jobs:
       # - /Zc:inline drops Singleton<ConnectionManager>::makeInstance, which MSVC wrongly treats as inline (C4506).
       - shell: bash
         run: sed -i 's#<WholeProgramOptimization>true#<WholeProgramOptimization>false#; s#<LinkTimeCodeGeneration>true#<LinkTimeCodeGeneration>false#; s#UseLinkTimeCodeGeneration#Default#; s#<IntrinsicFunctions>true</IntrinsicFunctions>#&<RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>#' build-scummvm/*.props
+      # The arm64 compiler crashes optimizing engines/mads/core/magic.cpp (C1001, D8040): build that file unoptimized.
+      - if: matrix.arch == 'arm64'
+        shell: bash
+        run: |
+          sed -E -i 's#(<ClCompile Include="[^"]*mads[\\/]core[\\/]magic\.cpp") />#\1><Optimization>Disabled</Optimization></ClCompile>#' build-scummvm/mads.vcxproj
+          grep -q '<Optimization>Disabled</Optimization></ClCompile>' build-scummvm/mads.vcxproj
       - uses: microsoft/setup-msbuild@v2
       - run: vcpkg install
       - run: |
           cd build-scummvm
-          msbuild scummvm.sln /m:${{ matrix.msbuildJobs || 4 }} /p:VcpkgEnableManifest=true /p:BuildInParallel=true /p:Configuration=Release /p:PreferredToolArchitecture=x64 /p:Platform=${{ matrix.platform }} /v:minimal
+          msbuild scummvm.sln /m /p:VcpkgEnableManifest=true /p:BuildInParallel=true /p:Configuration=Release /p:PreferredToolArchitecture=x64 /p:Platform=${{ matrix.platform }} /v:minimal
       - shell: bash
         run: |
           mkdir -p "pkg/ScummVM-AI" dist
