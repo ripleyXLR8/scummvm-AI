@@ -181,7 +181,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          active=$(grep '| Active |' ENGINES-AI.md | cut -d'|' -f2,3 | sed 's/^ */- /; s/ *| */: /; s/ *$//')
+          active=$( (grep '| Active |' ENGINES-AI.md || true) | cut -d'|' -f2,3 | sed 's/^ */- /; s/ *| */: /; s/ *$//')
           {
             echo "Unofficial ScummVM-AI build of \`${GITHUB_SHA::10}\`, based on ScummVM $(sed -n 's/^#define SCUMMVM_VERSION "\(.*\)"/\1/p' base/internal_version.h). Not affiliated with the ScummVM team."
             echo
