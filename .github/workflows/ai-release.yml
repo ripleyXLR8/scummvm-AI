@@ -65,7 +65,7 @@ jobs:
         include:
           - { platform: win32, arch: x86, triplet: x86-windows, useNasm: 'true' }
           - { platform: x64, arch: x64, triplet: x64-windows }
-          - { platform: arm64, arch: arm64, triplet: arm64-windows }
+          - { platform: arm64, arch: arm64, triplet: arm64-windows, msbuildJobs: 2 } # the arm64 compiler runs out of memory on mads with more
     env:
       CONFIG_FLAGS: --enable-discord --enable-faad --enable-gif --enable-mikmod --enable-mpeg2 --enable-vpx
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
@@ -94,15 +94,16 @@ jobs:
           mkdir build-scummvm
           cd build-scummvm
           ../devtools/create_project/cmake/Debug/create_project.exe .. --msvc --vcpkg ${{ env.CONFIG_FLAGS }}
-      # With every default engine, Release LTCG overflows the 4 GB image limit (x86/x64) and crashes
-      # the arm64 compiler (C1001). Turn it off in the generated property sheets.
+      # Fix up the generated Release property sheets (upstream CI only builds Debug):
+      # - with every default engine, LTCG overflows the 4 GB image limit, so turn it off;
+      # - /Zc:inline drops Singleton<ConnectionManager>::makeInstance, which MSVC wrongly treats as inline (C4506).
       - shell: bash
-        run: sed -i 's#<WholeProgramOptimization>true#<WholeProgramOptimization>false#; s#<LinkTimeCodeGeneration>true#<LinkTimeCodeGeneration>false#; s#UseLinkTimeCodeGeneration#Default#' build-scummvm/*.props
+        run: sed -i 's#<WholeProgramOptimization>true#<WholeProgramOptimization>false#; s#<LinkTimeCodeGeneration>true#<LinkTimeCodeGeneration>false#; s#UseLinkTimeCodeGeneration#Default#; s#<IntrinsicFunctions>true</IntrinsicFunctions>#&<RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>#' build-scummvm/*.props
       - uses: microsoft/setup-msbuild@v2
       - run: vcpkg install
       - run: |
           cd build-scummvm
-          msbuild scummvm.sln /m /p:VcpkgEnableManifest=true /p:BuildInParallel=true /p:Configuration=Release /p:PreferredToolArchitecture=x64 /p:Platform=${{ matrix.platform }} /v:minimal
+          msbuild scummvm.sln /m:${{ matrix.msbuildJobs || 4 }} /p:VcpkgEnableManifest=true /p:BuildInParallel=true /p:Configuration=Release /p:PreferredToolArchitecture=x64 /p:Platform=${{ matrix.platform }} /v:minimal
       - shell: bash
         run: |
           mkdir -p "pkg/ScummVM-AI" dist
